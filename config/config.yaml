@@ -1,0 +1,59 @@
+# Gulf of Mexico Plate Kinematic Reconstruction — Configuration
+
+study_region:
+  name: "Gulf of Mexico"
+  west: -100.0
+  east: -80.0
+  south: 15.0
+  north: 32.0
+
+plate_model:
+  name: "Müller et al. (2019)"
+  doi: "10.5281/zenodo.3764447"
+  zenodo_url: "https://zenodo.org/record/3764447"
+  max_age_ma: 200.0
+  time_step_ma: 2.0
+
+plate_ids:
+  north_america: 101
+  south_america: 201
+  africa: 701
+  yucatan: 314
+  caribbean: 501
+  cocos: 902
+
+key_time_slices:  # Ma
+  - 200
+  - 165
+  - 145
+  - 100
+  - 55
+  - 0
+
+tectonic_events:
+  triassic_rifting:
+    age_start_ma: 240
+    age_end_ma: 210
+  jurassic_spreading:
+    age_start_ma: 170
+    age_end_ma: 145
+  louann_salt:
+    age_start_ma: 165
+    age_end_ma: 158
+  passive_margin:
+    age_start_ma: 145
+    age_end_ma: 80
+  laramide:
+    age_start_ma: 80
+    age_end_ma: 55
+
+basin_analysis:
+  beta_factor_range: [1.5, 3.0]  # Crustal stretching factor
+  crustal_thickness_km: 35.0
+  thermal_conductivity: 3.0
+  basal_heat_flow_mW: 60.0
+
+paths:
+  data_dir: "data"
+  plate_model_dir: "data/plate_model"
+  results_dir: "results"

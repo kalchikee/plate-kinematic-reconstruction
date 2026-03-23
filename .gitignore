@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Large plate model files (download separately)
+data/plate_model/*.zip
+data/plate_model/Muller2019/
+data/*.zip
+
+# Generated outputs
+results/figures/*.png
+results/figures/*.pdf
+results/animations/*.mp4
+results/data_exports/*.csv
+results/data_exports/*.gpkg
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
