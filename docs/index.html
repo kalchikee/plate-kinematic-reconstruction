@@ -172,8 +172,10 @@ fetch('https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB
     L.polyline([[23.5,-97],[23.0,-89],[23.8,-82]],{color:'#ffd700',weight:2}).addTo(layers.plates);
   });
 
-// Real plate polygons — Bird (2002) via fraxen/tectonicplates
+// Tectonic blocks — tries real data files first, falls back to approximate
 layers.blocks = L.layerGroup().addTo(map);
+
+// Real plate polygons — Bird (2002) for North America + Caribbean
 fetch('https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json')
   .then(r => r.json())
   .then(data => {
@@ -187,38 +189,66 @@ fetch('https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB
             fillColor: colors[f.properties.PlateName] || '#8b949e',
             fillOpacity: 0.10,
             color: colors[f.properties.PlateName] || '#8b949e',
-            weight: 1.5,
-            opacity: 0.6,
+            weight: 1.5, opacity: 0.6,
           }
         }).bindPopup(
           `<strong>${f.properties.PlateName} Plate</strong><br>Source: Bird (2002) PB2002 model`
         ).addTo(layers.blocks);
       });
+  }).catch(() => {});
 
-    // Yucatan Block — paleo-microplate, no longer active; approximate extent from published reconstructions
-    L.polygon([[21.5,-86.5],[21.5,-90.0],[18.0,-90.5],[15.5,-88.5],[15.5,-86.0],[18.5,-84.5],[21.5,-86.5]],
-      {fillColor:'#ffe066',fillOpacity:0.18,color:'#ffe066',weight:1.5,opacity:0.7,dashArray:'5,4'})
-      .bindPopup('<strong>Yucatan Block</strong> <em>(approximate extent)</em><br>Plate ID 314 (Müller 2019)<br>Paleo-microplate — rotated ~45° CCW during GoM opening (165–145 Ma)<br>Not in Bird 2002 (no longer active); extent from GPlates reconstruction')
-      .addTo(layers.blocks);
-
-    // Florida Platform — geological sedimentary platform; approximate extent
-    L.polygon([[31,-87],[31,-80],[25,-80],[25,-87],[31,-87]],
-      {fillColor:'#58a6ff',fillOpacity:0.08,color:'#58a6ff',weight:1,opacity:0.5,dashArray:'4,4'})
-      .bindPopup('<strong>Florida Platform</strong> <em>(approximate extent)</em><br>Jurassic carbonate ramp; Smackover Fm reservoir<br>Boundary from USGS geology — dashed = approximate')
-      .addTo(layers.blocks);
+// Yucatan Block — try real GeoJSON first (from prepare_geodata.py), fallback to approximate
+fetch('./data/yucatan_block.geojson')
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(data => {
+    L.geoJSON(data, {
+      style: {fillColor:'#ffe066',fillOpacity:0.22,color:'#ffe066',weight:1.5,opacity:0.8}
+    }).bindPopup(
+      '<strong>Yucatan Block</strong><br>Source: EarthByte GPlates 2.3 / Müller et al. (2019)<br>Plate ID 314 · Rotated ~45° CCW during GoM opening (165–145 Ma)'
+    ).addTo(layers.blocks);
   })
   .catch(() => {
-    // fallback approximate outlines if fetch fails
-    L.polygon([[32,-97],[32,-80],[24,-80],[24,-97],[32,-97]],
-      {fillColor:'#3fb950',fillOpacity:0.10,color:'#3fb950',weight:1}).addTo(layers.blocks);
+    // Fallback approximate outline
+    L.polygon([[21.5,-86.5],[21.5,-90.0],[18.0,-90.5],[15.5,-88.5],[15.5,-86.0],[18.5,-84.5],[21.5,-86.5]],
+      {fillColor:'#ffe066',fillOpacity:0.18,color:'#ffe066',weight:1.5,opacity:0.7,dashArray:'5,4'})
+      .bindPopup('<strong>Yucatan Block</strong> <em>(approximate)</em><br>Run scripts/prepare_geodata.py for real geometry<br>Plate ID 314 (Müller 2019) · Rotated ~45° CCW 165–145 Ma')
+      .addTo(layers.blocks);
   });
+
+// Florida Platform — try real GeoJSON first, fallback to approximate
+fetch('./data/florida_platform.geojson')
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(data => {
+    L.geoJSON(data, {
+      style: {fillColor:'#58a6ff',fillOpacity:0.12,color:'#58a6ff',weight:1.5,opacity:0.7}
+    }).bindPopup(
+      '<strong>Florida Platform</strong><br>Source: USGS SGMC<br>Jurassic carbonate ramp; Smackover Fm reservoir'
+    ).addTo(layers.blocks);
+  })
+  .catch(() => {
+    L.polygon([[31,-87],[31,-80],[25,-80],[25,-87],[31,-87]],
+      {fillColor:'#58a6ff',fillOpacity:0.08,color:'#58a6ff',weight:1,opacity:0.5,dashArray:'4,4'})
+      .bindPopup('<strong>Florida Platform</strong> <em>(approximate)</em><br>Download from USGS SGMC — see docs/data/README.md')
+      .addTo(layers.blocks);
+  });
+
+// Real COB boundary for Sigsbee Deep — loads if prepare_geodata.py has been run
+fetch('./data/gom_cob.geojson')
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(data => {
+    L.geoJSON(data, {
+      style: {color:'#8b5cf6', weight:2, opacity:0.8, dashArray:'6,3', fill:false}
+    }).bindPopup(
+      '<strong>GoM Continent-Ocean Boundary</strong><br>Source: EarthByte GPlates 2.3 COBs<br>Marks transition to oceanic crust (Sigsbee Deep)'
+    ).addTo(layers.basins);
+  }).catch(() => {});
 
 // Sub-basins
 layers.basins = L.layerGroup([
   L.circle([24.5,-90.5],{radius:280000,fillColor:'#8b5cf6',fillOpacity:0.12,color:'#8b5cf6',weight:1,dashArray:'4,4'})
-    .bindPopup('<strong>Sigsbee Deep (Deep Basin)</strong> <em>(approximate extent)</em><br>Oceanic crust formed 145 Ma<br>Water depth: ~3,700 m · Salt canopy above<br>Precise boundary from BOEM/USGS bathymetry'),
+    .bindPopup('<strong>Sigsbee Deep (Deep Basin)</strong> <em>(approximate extent)</em><br>Oceanic crust formed 145 Ma · Water depth: ~3,700 m<br>Run prepare_geodata.py — COB boundary from EarthByte will replace this'),
   L.circle([27,-93],{radius:200000,fillColor:'#f78166',fillOpacity:0.12,color:'#f78166',weight:1,dashArray:'4,4'})
-    .bindPopup('<strong>East Texas Salt Basin</strong> <em>(approximate extent)</em><br>Louann Salt source; 165–158 Ma evaporites<br>Precise boundary from Texas Bureau of Economic Geology'),
+    .bindPopup('<strong>East Texas Salt Basin</strong> <em>(approximate extent)</em><br>Louann Salt source; 165–158 Ma evaporites<br>Real boundary: Texas Bureau of Economic Geology<br>See docs/data/README.md to add real geometry'),
   L.circle([29,-88.5],{radius:150000,fillColor:'#ffa94d',fillOpacity:0.12,color:'#ffa94d',weight:1,dashArray:'4,4'})
     .bindPopup('<strong>Mississippi Fan</strong> <em>(approximate extent)</em><br>Paleocene–Eocene turbidites<br>Major deepwater reservoir'),
 ]).addTo(map);
