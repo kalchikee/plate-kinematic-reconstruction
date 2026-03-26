@@ -25,6 +25,10 @@ Note: geopandas is only needed if the COB file is a shapefile rather than GPML.
 import os, sys, json, zipfile, io, re, gzip
 import xml.etree.ElementTree as ET
 
+# Windows console UTF-8 fix
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 try:
     import requests
 except ImportError:
@@ -76,7 +80,7 @@ def parse_gpml_polygons(gpml_bytes, plate_id_filter=None, region_bbox=None):
 
     text = gpml_bytes.decode('utf-8', errors='replace')
 
-    # ── Namespace map from the document header ───────────────────────────────
+    # --Namespace map from the document header ───────────────────────────────
     ns = {}
     for m in re.finditer(r'xmlns:?(\w*)=["\']([^"\']+)["\']', text[:3000]):
         prefix, uri = m.group(1), m.group(2)
@@ -98,7 +102,7 @@ def parse_gpml_polygons(gpml_bytes, plate_id_filter=None, region_bbox=None):
                          'ClosedPlatePolygon', 'gpml:StaticPolygon'):
             continue
 
-        # ── Plate ID ─────────────────────────────────────────────────────────
+        # --Plate ID ─────────────────────────────────────────────────────────
         pid = None
         for child in elem.iter():
             cl = child.tag.split('}')[-1]
@@ -117,7 +121,7 @@ def parse_gpml_polygons(gpml_bytes, plate_id_filter=None, region_bbox=None):
         if plate_id_filter is not None and pid != plate_id_filter:
             continue
 
-        # ── Geometry ─────────────────────────────────────────────────────────
+        # --Geometry ─────────────────────────────────────────────────────────
         for geo in elem.iter():
             gl = geo.tag.split('}')[-1]
             if gl == 'posList' and geo.text:
@@ -144,11 +148,11 @@ def parse_gpml_polygons(gpml_bytes, plate_id_filter=None, region_bbox=None):
     return features
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ---
 # 1.  Yucatan Block  (plate ID 314)
-# ─────────────────────────────────────────────────────────────────────────────
+# ---
 def download_yucatan_block():
-    print("\n── 1. Yucatan Block ─────────────────────────────────────────────")
+    print("\n--1. Yucatan Block ─────────────────────────────────────────────")
     url = ("https://www.earthbyte.org/webdav/ftp/earthbyte/GPlates/"
            "GPlates2.3_GeoData/Individual/StaticPolygons.zip")
 
@@ -185,12 +189,12 @@ def download_yucatan_block():
     return True
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ---
 # 2.  Continent-Ocean Boundaries — Gulf of Mexico region
 #     (these outline the Sigsbee Deep oceanic crust boundary)
-# ─────────────────────────────────────────────────────────────────────────────
+# ---
 def download_cobs():
-    print("\n── 2. Continent-Ocean Boundaries (GoM) ─────────────────────────")
+    print("\n--2. Continent-Ocean Boundaries (GoM) ─────────────────────────")
     url = ("https://www.earthbyte.org/webdav/ftp/earthbyte/GPlates/"
            "GPlates2.3_GeoData/Individual/COBs.zip")
 
@@ -227,12 +231,12 @@ def download_cobs():
     return True
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ---
 # 3.  Summary and manual download instructions
-# ─────────────────────────────────────────────────────────────────────────────
+# ---
 def print_manual_instructions():
     print("""
-── 3. Florida Platform  (manual download required) ─────────────────────────
+--3. Florida Platform  (manual download required) ─────────────────────────
 
   The Florida Platform boundary comes from the USGS State Geologic Map
   Compilation (SGMC).  Downloading the full 600 MB dataset just to clip
@@ -251,7 +255,7 @@ def print_manual_instructions():
        in the Florida/SE region, export selection as GeoJSON
     4. Save as docs/data/florida_platform.geojson
 
-── 4. East Texas Salt Basin  (manual download required) ─────────────────────
+--4. East Texas Salt Basin  (manual download required) ─────────────────────
 
   The Texas Bureau of Economic Geology (BEG) is the authoritative source.
 
@@ -271,7 +275,7 @@ Once you place the files in docs/data/, the map will load them automatically.
 """)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ---
 if __name__ == '__main__':
     print("=" * 60)
     print("  GoM Geological Data Preparation")
