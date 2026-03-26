@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gulf of Mexico Plate Kinematic Reconstruction</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -17,13 +19,29 @@
   .stat{background:#161b22;padding:0.9rem 1.2rem;}
   .stat-label{font-size:0.68rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.06em;}
   .stat-value{font-size:1.2rem;font-weight:700;color:#3fb950;margin-top:0.15rem;}
-  .main{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#21262d;padding:1px;}
+
+  /* Map section */
+  .map-section{display:grid;grid-template-columns:1fr 320px;height:480px;gap:1px;background:#21262d;margin-top:1px;}
+  #map{width:100%;height:100%;}
+  .map-panel{background:#161b22;overflow-y:auto;padding:1rem;}
+  .map-panel h3{font-size:0.75rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem;}
+  .legend-item{display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;margin-bottom:0.4rem;}
+  .leg-line{height:3px;width:24px;border-radius:2px;}
+  .leg-dot{width:10px;height:10px;border-radius:50%;}
+
+  /* Map toggle buttons */
+  .map-controls{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem;}
+  .ctrl-btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;padding:0.25rem 0.6rem;font-size:0.75rem;cursor:pointer;}
+  .ctrl-btn.active{background:#1f6feb;border-color:#1f6feb;color:#fff;}
+
+  .main{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#21262d;padding:1px;margin-top:1px;}
   .chart-panel{background:#161b22;padding:1rem;}
   .chart-panel h3{font-size:0.75rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.7rem;}
-  #globe-chart{height:400px;}
-  #velocity-chart{height:400px;}
-  #timeline-chart{height:300px;}
+  #velocity-chart{height:300px;}
   #petroleum-chart{height:300px;}
+  #timeline-chart{height:260px;}
+  #globe-chart{height:260px;}
+
   .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#21262d;margin-top:1px;}
   .info-card{background:#161b22;padding:1.2rem;}
   .info-card h3{font-size:0.75rem;color:#8b949e;text-transform:uppercase;margin-bottom:0.7rem;}
@@ -34,6 +52,8 @@
   .event-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;}
   .event-text strong{color:#c9d1d9;}
   .event-text span{color:#8b949e;}
+
+  @media(max-width:768px){.map-section{grid-template-columns:1fr;grid-template-rows:55vw 1fr;}.main{grid-template-columns:1fr;}.info-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -57,11 +77,40 @@
   <div class="stat"><div class="stat-label">GoM oil reserves</div><div class="stat-value">~50 Bbbl</div></div>
 </div>
 
+<!-- Interactive Map -->
+<div class="map-section">
+  <div id="map"></div>
+  <div class="map-panel">
+    <h3>Map Layers</h3>
+    <div class="map-controls">
+      <button class="ctrl-btn active" id="btn-plates" onclick="toggleLayer('plates',this)">Plate Boundaries</button>
+      <button class="ctrl-btn active" id="btn-blocks" onclick="toggleLayer('blocks',this)">Tectonic Blocks</button>
+      <button class="ctrl-btn active" id="btn-basins" onclick="toggleLayer('basins',this)">Sub-basins</button>
+      <button class="ctrl-btn active" id="btn-fields" onclick="toggleLayer('fields',this)">Oil Fields</button>
+      <button class="ctrl-btn active" id="btn-vectors" onclick="toggleLayer('vectors',this)">Motion Vectors</button>
+    </div>
+
+    <h3 style="margin-top:0.75rem;">Legend</h3>
+    <div class="legend-item"><div class="leg-line" style="background:#ff6b6b"></div><span>Divergent boundary (paleo-spreading)</span></div>
+    <div class="legend-item"><div class="leg-line" style="background:#ffa94d;border-top:2px dashed #ffa94d;height:0"></div><span>Transform fault</span></div>
+    <div class="legend-item"><div class="leg-line" style="background:#74c0fc"></div><span>Passive margin</span></div>
+    <div class="legend-item"><div class="leg-dot" style="background:#ffe066;opacity:0.6"></div><span>Yucatan block (rotated ~45°)</span></div>
+    <div class="legend-item"><div class="leg-dot" style="background:#3fb950;opacity:0.5"></div><span>North American craton</span></div>
+    <div class="legend-item"><div class="leg-dot" style="background:#f85149"></div><span>Major oil/gas field</span></div>
+    <div class="legend-item"><div class="leg-dot" style="background:#58a6ff"></div><span>Plate motion vector</span></div>
+
+    <h3 style="margin-top:0.75rem;">Spreading Centre</h3>
+    <p style="font-size:0.78rem;color:#8b949e;line-height:1.6;">
+      The extinct <strong style="color:#c9d1d9;">GoM spreading ridge</strong> (165–145 Ma) ran roughly E–W through the deep basin. Maximum divergence ~40 mm/yr. Ridge cessation produced the thick oceanic crust underlying the present deep-water basin.
+    </p>
+  </div>
+</div>
+
 <div class="main">
   <div class="chart-panel"><h3>Divergence Rate — Gulf of Mexico (165–0 Ma)</h3><div id="velocity-chart"></div></div>
   <div class="chart-panel"><h3>Petroleum Systems Timing Chart</h3><div id="petroleum-chart"></div></div>
 </div>
-<div class="main" style="margin-top:1px;">
+<div class="main">
   <div class="chart-panel"><h3>Basin Subsidence Model (McKenzie Stretching, β = 2.0)</h3><div id="timeline-chart"></div></div>
   <div class="chart-panel"><h3>Paleo-Water Depth Through Time</h3><div id="globe-chart"></div></div>
 </div>
@@ -89,7 +138,96 @@
 </div>
 
 <script>
-// Divergence rate through time
+// ── Map ──────────────────────────────────────────────────────────────────────
+const map = L.map('map', { center: [24, -90], zoom: 4, preferCanvas: true });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CARTO', maxZoom: 18,
+}).addTo(map);
+
+const layers = {};
+
+// Paleo-spreading ridge (extinct, E–W through deep basin)
+layers.plates = L.layerGroup([
+  L.polyline([[23.5,-97],[23.2,-93],[23.0,-89],[23.3,-85],[23.8,-82]],
+    {color:'#ff6b6b',weight:3,opacity:0.9}).bindPopup('<strong>Extinct GoM Spreading Ridge</strong><br>Active 165–145 Ma<br>Max rate: ~40 mm/yr'),
+  // Transform faults
+  L.polyline([[21.5,-87],[23.0,-89]],{color:'#ffa94d',weight:2,dashArray:'6,4',opacity:0.8})
+    .bindPopup('<strong>Paleo-transform fault</strong>'),
+  L.polyline([[24.0,-82],[25.5,-81],[26.0,-80]],{color:'#ffa94d',weight:2,dashArray:'6,4',opacity:0.8})
+    .bindPopup('<strong>Cuba transform zone</strong>'),
+  // Passive margins
+  L.polyline([[30.5,-97],[29.5,-94],[28.5,-91],[27.5,-88],[26.5,-86],[25.5,-84],[25.0,-82],[24.5,-81]],
+    {color:'#74c0fc',weight:2,opacity:0.7}).bindPopup('<strong>N. Gulf Passive Margin</strong><br>Thermal subsidence since 145 Ma'),
+  L.polyline([[18.0,-92],[19.5,-90],[21.0,-88],[22.5,-86],[23.5,-85]],
+    {color:'#74c0fc',weight:2,opacity:0.7}).bindPopup('<strong>Yucatan Passive Margin</strong>'),
+]).addTo(map);
+
+// Tectonic blocks
+layers.blocks = L.layerGroup([
+  // Yucatan block
+  L.polygon([[21.5,-86.5],[21.5,-90.0],[18.0,-90.5],[15.5,-88.5],[15.5,-86.0],[18.5,-84.5],[21.5,-86.5]],
+    {fillColor:'#ffe066',fillOpacity:0.18,color:'#ffe066',weight:1.5,opacity:0.7})
+    .bindPopup('<strong>Yucatan Block</strong><br>Plate ID 314 (Müller 2019)<br>Rotated ~45° CCW during spreading (165–145 Ma)<br>Euler pole: ~26°N, 84°W'),
+  // North American craton (GoM margin)
+  L.polygon([[32,-97],[32,-80],[28,-79],[25,-80],[24,-82],[24,-97],[32,-97]],
+    {fillColor:'#3fb950',fillOpacity:0.10,color:'#3fb950',weight:1,opacity:0.5})
+    .bindPopup('<strong>North American Plate</strong><br>Plate ID 101<br>Stable craton; passive margin since 145 Ma'),
+  // Florida platform
+  L.polygon([[31,-87],[31,-80],[25,-80],[25,-87],[31,-87]],
+    {fillColor:'#58a6ff',fillOpacity:0.08,color:'#58a6ff',weight:1,opacity:0.4})
+    .bindPopup('<strong>Florida Platform</strong><br>Jurassic carbonate ramp<br>Reservoir: Smackover Fm'),
+]).addTo(map);
+
+// Sub-basins
+layers.basins = L.layerGroup([
+  L.circle([24.5,-90.5],{radius:280000,fillColor:'#8b5cf6',fillOpacity:0.12,color:'#8b5cf6',weight:1})
+    .bindPopup('<strong>Sigsbee Deep (Deep Basin)</strong><br>Oceanic crust, 145 Ma<br>Water depth: ~3,700 m<br>Salt canopy above'),
+  L.circle([27,-93],{radius:200000,fillColor:'#f78166',fillOpacity:0.12,color:'#f78166',weight:1})
+    .bindPopup('<strong>East Texas Salt Basin</strong><br>Louann Salt source<br>165–158 Ma evaporites'),
+  L.circle([29,-88.5],{radius:150000,fillColor:'#ffa94d',fillOpacity:0.12,color:'#ffa94d',weight:1})
+    .bindPopup('<strong>Mississippi Fan</strong><br>Paleocene–Eocene turbidites<br>Major deepwater reservoir'),
+]).addTo(map);
+
+// Major oil/gas fields
+const fields = [
+  {lat:27.5,lon:-90.0,name:'Atlantis',prod:'~200 kbbl/d',depth:'2,150 m water'},
+  {lat:28.0,lon:-89.5,name:'Thunder Horse',prod:'~300 kbbl/d',depth:'1,850 m water'},
+  {lat:27.8,lon:-91.5,name:'Mars',prod:'~150 kbbl/d',depth:'900 m water'},
+  {lat:29.5,lon:-93.5,name:'Eugene Island 330',prod:'Historic: 15 Mbbl',depth:'Shelf'},
+  {lat:28.5,lon:-93.0,name:'Garden Banks',prod:'~80 kbbl/d',depth:'1,300 m water'},
+  {lat:23.5,lon:-91.5,name:'Cantarell (Mx)',prod:'Historic: 2.1 Mbbl/d',depth:'Shallow'},
+  {lat:20.5,lon:-92.5,name:'Ku-Maloob-Zaap (Mx)',prod:'~800 kbbl/d',depth:'100 m water'},
+];
+layers.fields = L.layerGroup(
+  fields.map(f => L.circleMarker([f.lat,f.lon],{radius:7,fillColor:'#f85149',color:'#ff8888',weight:1.5,fillOpacity:0.85})
+    .bindPopup(`<strong>${f.name}</strong><br>Production: ${f.prod}<br>Water depth: ${f.depth}`))
+).addTo(map);
+
+// Present-day plate motion vectors (Caribbean vs N. America, ~20 mm/yr E)
+const vectorPoints = [
+  {lat:18,lon:-85},{lat:20,lon:-80},{lat:17,lon:-75},{lat:15,lon:-83},
+];
+layers.vectors = L.layerGroup(
+  vectorPoints.map(p => {
+    const endLat = p.lat + 0.3;
+    const endLon = p.lon + 1.2;
+    const arrow = L.polyline([[p.lat,p.lon],[endLat,endLon]],{color:'#58a6ff',weight:2,opacity:0.8});
+    const head = L.circleMarker([endLat,endLon],{radius:4,fillColor:'#58a6ff',color:'#58a6ff',fillOpacity:1,weight:1});
+    return L.layerGroup([arrow,head]).bindPopup('<strong>Caribbean Plate motion</strong><br>~20 mm/yr ENE relative to N. America');
+  })
+).addTo(map);
+
+// Layer toggle
+function toggleLayer(name, btn) {
+  btn.classList.toggle('active');
+  if (map.hasLayer(layers[name])) {
+    map.removeLayer(layers[name]);
+  } else {
+    map.addLayer(layers[name]);
+  }
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
 const ages=Array.from({length:200},(_,i)=>200-i);
 const rate=ages.map(a=>{
   if(a>170||a<140) return 0.5+Math.random()*1;
@@ -110,7 +248,6 @@ Plotly.newPlot('velocity-chart',[{x:ages,y:rate,type:'scatter',mode:'lines',line
   annotations:[{x:155,y:42,text:'Louann Salt',font:{color:'#ffd700',size:9},showarrow:false}],
 },{responsive:true,displayModeBar:false});
 
-// Petroleum systems Gantt
 const psElements=[
   {name:'Smackover Fm (source rock)',start:165,end:150,color:'#2ecc71'},
   {name:'Norphlet Fm (reservoir)',start:155,end:145,color:'#3498db'},
@@ -134,7 +271,6 @@ Plotly.newPlot('petroleum-chart',
     font:{color:'#8b949e',size:10},
   },{responsive:true,displayModeBar:false});
 
-// McKenzie subsidence
 const t=Array.from({length:200},(_,i)=>i);
 const beta=2.0,tau=62.8,tc=35000,rho_m=3300,rho_c=2800,rho_w=1030;
 const Wr=tc*(rho_m-rho_c)/(rho_m-rho_w)*(1-1/beta);
@@ -153,7 +289,6 @@ Plotly.newPlot('timeline-chart',[
   font:{color:'#8b949e',size:10},
 }][0],{responsive:true,displayModeBar:false});
 
-// Paleo-water depth proxy
 const ages2=Array.from({length:201},(_,i)=>200-i);
 const wd=ages2.map(a=>{ if(a>165)return 0; const s=(165-a)/165; return Math.min(3.5,s*3.5+0.3*Math.sin(s*Math.PI*3))+(Math.random()-0.5)*0.1; });
 Plotly.newPlot('globe-chart',[{x:ages2,y:wd,type:'scatter',mode:'lines',line:{color:'#74c0fc',width:2},fill:'tozeroy',fillcolor:'rgba(116,192,252,0.12)'}],{
